@@ -26,56 +26,25 @@ The main files are:
 * `runner.sh`: Helper script for running the timer on the instructional nodes
 
 You will probably mostly be looking at `Makefile.in` and `dgemm_*.c`. Note that "dgemm" stands for "**D**ouble Precision **GE**neral **M**atrix **M**ultiply".   
+
 ## Makefile system
 
-I have built the reference code with GCC and CLang on GCP.
-You can switch between these options by adding `PLATFORM=clang` (for
-example) to your `make` command, or by changing the `PLATFORM=gcc`
-line at the top of the Makefile.  For example, to build all the
-drivers on my laptop, I run
+By default, the `Makefile` uses `PLATFORM=gcc`. This is appropriate
+for running on our cluster. If you want to run this project on other 
+hardware, switch the `PLATFORM=` line. For example, to run on a mac,
+I would do:
 
     make PLATFORM=mac
 
-from the terminal.  If someone feels like adding an autoconf or CMake
-script for these configurations, I would welcome it!
+When using the default `gcc` build, the configuration is pulled from
+`Makefile.in.gcc`. You may wish to read this file and see what 
+settings (such as `OPTFLAGS`) are being used.
 
 For those who aren't familiar with the Makefile system and would like an overview, please consult these two links: [tutorial](http://mrbook.org/blog/tutorials/make/) [more in-depth tutorial](http://www.cs.swarthmore.edu/~newhall/unixhelp/howto_makefiles.html) 
 
-### Setting up your virtual machine
-
-We are going to install several packages to support this code.  For development,
-I recommend the `c4-standard-2` instance type.  We will also use this for timing.
-I recommend allocating a 20 GB boot disk in order to have enough room for the
-Intel tools.
-
-With this setup, you will *need* the following packages:
-
-- `build-essential`: GCC, Make, and various other basic tools for
-  working with compiled codes.
-- `pkg-config`: Used to semi-automatically figure out where to look
-  for various packages installed in the system (like the BLAS)
-- `gfortran`: You are going to want a Fortran compiler to be able to
-  test out the Fortran version of the DGEMM.  You may write your
-  optimized code in Fortran using this type of interface, if you want,
-  but it is not the default.
-- `clang`: The CLang compiler
-- `libomp-dev`: Support library for OpenMP with CLang
-- `git`: So you can fetch this repository
-- `libopenblas-dev`: The OpenBLAS library is a
-  fast BLAS implementation for modern Intel processors.
-- The Python stack: `python3-numpy`, `python3-scipy`, `python3-pandas`, and
-  `python3-matplotlib`
-
-I *recommend* also installing the following packages (which you may
-have already done):
-
-- `llvm`: To get access to the `llvm-mca` tool
-- `google-perftools`: The Google performance tools for profiling
-- The [Intel oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html?operatingsystem=linux&linux-install-type=apt) tools.
-
-Once you have installed the compiler and the OpenBlas libraries,
-building with GCC is as simple as typing `make` (or `make
-PLATFORM=gcc`).  But it is worth poking through the Makefile.
+(Warning: only the `gcc` build system has been thoroughly tested.
+I'll offer small amounts of extra credit for any improvements that
+you'd like to send me.)
 
 ### Building on MacOS
 
@@ -85,12 +54,7 @@ things installed right first.  Note that you are in no way obliged to
 use these things; I provide it solely for your own edification.
 
 By default, the `gcc` program in MacOS is not GCC at all; rather, it
-is an alias for Clang.  The driver code (`matmul.c`) uses the OpenMP
-`omp_get_wtime` routine for timing; but, the Apple version of Clang
-looks like it does not support OpenMP.  At least, I thought there was
-no OpenMP support until recently!  Then I read [this
-article](https://iscinumpy.gitlab.io/post/omp-on-high-sierra/) and
-learned better.  So assuming you have Homebrew installed, you can
+is an alias for Clang. So assuming you have Homebrew installed, you can
 build with `make PLATFORM=mac-clang` provided that you first run the
 line
 
@@ -104,7 +68,7 @@ and then you can build with `make PLATFORM=mac-gcc`.
 
 ### Notes on system BLAS
 
-For GCP, the Makefile is configured to link against
+The `gcc` Makefile is configured to link against
 OpenBLAS, a high-performance open-source BLAS library based on the Goto BLAS (as an aside, 
 there is an excellent NYTimes [article](http://www.nytimes.com/2005/11/28/technology/writing-the-fastest-code-by-hand-for-fun-a-human-computer-keeps.html?mcubz=1) about the history behind Goto BLAS)
 
@@ -142,6 +106,26 @@ use the Fortran compiler for linking everything together.
 
 ## Running the code
 
+You'll submit a job using `qsub` and the provided job file:
+
+```
+qsub jobfile.pbs
+```
+
+Within this job file, you'll write commands that interact with the `make`
+system. The starter code contains these commands:
+
+```
+make
+make run
+make plot
+```
+
+These are a great default. If you want to change them (to run a custom driver 
+program, or to only run one of the dgemm implementations), keep reading.
+
+### Build system details
+
 The code writes a sequence of timings to a CSV (comma-separated value)
 text file that can be loaded into a spreadsheet or array for further
 processing.  By default, the name of the CSV file is based on the executable
@@ -166,7 +150,7 @@ which will remove executables and compute node logs (but not your code or benchm
 
     make realclean
 
-## Plotting results
+### Plotting results
 
 You can produce timing plots by running
 
